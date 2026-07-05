@@ -162,44 +162,66 @@ function App() {
     }
     // --------------------------------
 
+    // 
     try {
-      const apiBody = {
-        model: imageObj ? 'llava' : 'phi3', 
-        prompt: userMessage || 'What is in this image?',
-        stream: true 
+      // 1. Grab User Preferences from LocalStorage
+      const sysDesignation = localStorage.getItem('luna-designation') || 'Commander';
+      const sysName = localStorage.getItem('luna-assistantName') || 'Luna';
+      const sysLanguage = localStorage.getItem('luna-language') || 'Universal English';
+      const selectedModelSetting = localStorage.getItem('luna-model') || 'core';
+      
+      // Determine actual Ollama model name based on UI setting
+      let ollamaModel = 'phi3';
+      if (imageObj) ollamaModel = 'llava';
+      else if (selectedModelSetting === 'pro') ollamaModel = 'llama3'; // Or whatever large model you have
+      else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2'; // Or whatever fast model you have
+      // 2. Build the System Prompt
+      const systemPrompt = `You are a highly advanced AI named ${sysName}. You are assisting ${sysDesignation}. You must always respond in ${sysLanguage}. Be helpful, concise, and stay in character.`;
+      // 3. Gather the last 10 messages from the active chat so Luna remembers context
+      const recentHistory = (activeChat?.messages || []).slice(-10).map(msg => ({
+        role: msg.role === 'ai' ? 'assistant' : 'user',
+        content: msg.content
+      }));
+      // 4. Construct the final message payload for the /api/chat endpoint
+      const currentMessagePayload = {
+        role: 'user',
+        content: userMessage || 'What is in this image?'
       };
       
       if (imageObj) {
-        apiBody.images = [imageObj.data];
+        currentMessagePayload.images = [imageObj.data];
       }
-
-      // 3. Send the request to local Ollama API
-      const response = await fetch('http://localhost:11434/api/generate', {
+      // 5. Send request to the CHAT endpoint instead of Generate
+      const response = await fetch('http://localhost:11434/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiBody)
+        body: JSON.stringify({
+          model: ollamaModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...recentHistory,
+            currentMessagePayload
+          ],
+          stream: true 
+        })
       });
-
       if (!response.ok) throw new Error('Ollama connection failed');
-
-      // 4. Read the streaming response chunks
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
         
         for (const line of lines) {
           const parsed = JSON.parse(line);
-          if (parsed.response) {
+          // Note: /api/chat returns parsed.message.content instead of parsed.response!
+          if (parsed.message && parsed.message.content) {
             updateActiveChat(prevMsgs => {
               const newMsgs = [...prevMsgs];
               const lastMessage = {...newMsgs[newMsgs.length - 1]};
-              lastMessage.content += parsed.response;
+              lastMessage.content += parsed.message.content;
               newMsgs[newMsgs.length - 1] = lastMessage;
               return newMsgs;
             });

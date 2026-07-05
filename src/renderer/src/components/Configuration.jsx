@@ -12,14 +12,22 @@ import {
 export default function Configuration({ onBack }) {
   // Initialize state from localStorage
   const [theme, setTheme] = useState(() => localStorage.getItem('luna-theme') || 'midnight');
-  const [model, setModel] = useState('core');
+  const [model, setModel] = useState(() => localStorage.getItem('luna-model') || 'core');
+  const [designation,setDesignation] = useState(() => localStorage.getItem('luna-designation') || 'Commander')
+  const [assistantName,setAssistantName] = useState(() => localStorage.getItem('luna-assistantName') || 'Luna')
+  const [language,setLanguage] = useState(() => localStorage.getItem('luna-language') || 'Universal English')
+
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
     
-    // Apply the theme globally!
     localStorage.setItem('luna-theme', theme);
+    localStorage.setItem('luna-model', model);
+    localStorage.setItem('luna-designation', designation);
+    localStorage.setItem('luna-assistantName', assistantName);
+    localStorage.setItem('luna-language', language);
+    
     if (theme === 'nova') {
       document.body.classList.add('theme-nova');
     } else {
@@ -86,22 +94,26 @@ export default function Configuration({ onBack }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="font-label-md text-sm text-on-surface/80 ml-1">Your Designation</label>
-                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" placeholder="Commander" type="text" />
+                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" placeholder="Commander" type="text" value={designation} onChange={(e) => setDesignation(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <label className="font-label-md text-sm text-on-surface/80 ml-1">Assistant Name</label>
-                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" type="text" defaultValue="Luna" />
+                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" type="text" defaultValue="Luna" value={assistantName} onChange={(e) => setAssistantName(e.target.value)} />
               </div>
             </div>
 
             {/* Language Selection */}
             <div className="space-y-2">
               <label className="font-label-md text-sm text-on-surface/80 ml-1">Preferred Language</label>
-              <select className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md cursor-pointer outline-none appearance-none bg-surface/50">
-                <option className="bg-surface-container text-on-surface">Universal English (Default)</option>
-                <option className="bg-surface-container text-on-surface">Mandarin Nebula</option>
-                <option className="bg-surface-container text-on-surface">Stellar Spanish</option>
-                <option className="bg-surface-container text-on-surface">French Aurora</option>
+              <select 
+                className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md cursor-pointer outline-none appearance-none bg-surface/50" 
+                value={language} 
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="Universal English" className="bg-surface-container text-on-surface">Universal English (Default)</option>
+                <option value="Mandarin Nebula" className="bg-surface-container text-on-surface">Mandarin Nebula</option>
+                <option value="Stellar Spanish" className="bg-surface-container text-on-surface">Stellar Spanish</option>
+                <option value="French Aurora" className="bg-surface-container text-on-surface">French Aurora</option>
               </select>
             </div>
 
