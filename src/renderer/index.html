@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+    <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luna AI</title>
+    
+    <!-- Load Google Fonts & Icons from Stitch -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- Load Tailwind CSS via CDN (Quickest way for our Hackathon prototype) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-container": "var(--surface-container)",
+              "primary": "var(--primary)",
+              "secondary-container": "var(--secondary-container)",
+              "on-surface": "var(--on-surface)",
+              "on-surface-variant": "var(--on-surface-variant)",
+              "background": "var(--background)",
+              "on-primary": "var(--on-primary)",
+              "on-tertiary-container": "var(--on-tertiary-container)",
+              "on-secondary-container": "var(--on-secondary-container)"
+            },
+            fontFamily: {
+              "display-sm": ["Outfit"],
+              "label-md": ["Inter"],
+              "body-md": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

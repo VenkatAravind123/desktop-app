@@ -1,0 +1,140 @@
+:root {
+  --surface-container: #1d2022;
+  --primary: #d6bde7;
+  --secondary-container: #00eefc;
+  --on-surface: #e0e3e5;
+  --on-surface-variant: #ccc4cd;
+  --background: #101415;
+  --on-primary: #3b294a;
+  --on-tertiary-container: #8a53ff;
+  --on-secondary-container: #00686f;
+}
+
+body.theme-nova {
+  --background: #f0f4f8; 
+  --surface-container: #ffffff; 
+  --on-surface: #101415; 
+  --on-surface-variant: #505558; 
+  --primary: #8a53ff; 
+  --on-primary: #ffffff; 
+  --secondary-container: #00c6d4; 
+  --on-secondary-container: #ffffff;
+  --on-tertiary-container: #d6bde7;
+}
+
+body.theme-nova .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+}
+
+body.theme-nova .luna-message-glass {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+}
+
+body.theme-nova .glass-input {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+body.theme-nova .bg-white\/5 { background-color: rgba(0, 0, 0, 0.05) !important; }
+body.theme-nova .border-white\/10 { border-color: rgba(0, 0, 0, 0.1) !important; }
+body.theme-nova .border-white\/5 { border-color: rgba(0, 0, 0, 0.05) !important; }
+body.theme-nova .hover\:bg-white\/5:hover { background-color: rgba(0, 0, 0, 0.08) !important; }
+body.theme-nova .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.12) !important; }
+
+body {
+  background-color: var(--background);
+  overflow: hidden;
+  color: var(--on-surface);
+  margin: 0;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+.glass-panel {
+  backdrop-filter: blur(40px);
+  background: rgba(29, 32, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nebula-bg {
+  background: radial-gradient(circle at 80% 20%, rgba(214, 189, 231, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 20% 80%, rgba(0, 238, 252, 0.05) 0%, transparent 40%);
+}
+
+.user-message-glow {
+  box-shadow: 0 4px 20px rgba(0, 238, 252, 0.15);
+}
+
+.luna-message-glass {
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.send-btn-glow {
+  box-shadow: 0 0 15px rgba(0, 238, 252, 0.4);
+  transition: all 0.3s ease;
+}
+
+.send-btn-glow:hover {
+  box-shadow: 0 0 25px rgba(0, 238, 252, 0.6);
+  transform: scale(1.05);
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(0, 238, 252, 0.2); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 238, 252, 0.5); }
+
+.typing-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.loader {
+  display: inline-block;
+  color: #00eefc;
+  animation: cursor-blink 1s infinite;
+  text-shadow: 0 0 10px rgba(0, 238, 252, 0.8);
+  margin-left: 4px;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #00eefc;
+  box-shadow: 0 0 15px rgba(0, 238, 252, 0.2);
+  outline: none;
+}
+
+.luminous-button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 0 rgba(0, 240, 255, 0);
+}
+
+.luminous-button:hover {
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
