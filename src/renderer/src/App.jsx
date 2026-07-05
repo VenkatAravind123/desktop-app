@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Upload,Trash2, Settings } from 'lucide-react';
 import Onboarding from './components/Onboarding';
 import Configuration from './components/Configuration';
+import Sidebar from './components/Sidebar';
+import ChatArea from './components/ChatArea';
+import InputArea from './components/InputArea';
+
 function App() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -30,7 +33,7 @@ function App() {
           return;
         }
         setChats(savedChats);
-        console.log(savedChats);
+        //console.log(savedChats);
         setActiveChatId(savedChats[0].id); // Select the most recent chat
       } else {
         createNewChat();
@@ -370,164 +373,33 @@ function App() {
   return (
     <div className="flex h-screen w-full nebula-bg font-body-md overflow-hidden">
       
-      {/* Sidebar Navigation */}
-      <aside className="w-[280px] h-screen fixed left-0 top-0 bg-surface-container/60 backdrop-blur-[40px] border-r border-white/10 shadow-sm flex flex-col py-12 z-50">
-        
-        {/* Logo Section */}
-        <div className="flex items-center gap-4 mb-10 px-6">
-          <div className="w-10 h-10 rounded-full glass-panel flex items-center justify-center border border-primary/20">
-            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-          </div>
-          <div>
-            <h1 className="font-display-sm text-[40px] font-bold text-on-surface leading-none">Luna</h1>
-            <p className="font-label-md text-[14px] text-primary/60 tracking-wider">Celestial Intelligence</p>
-          </div>
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="px-6 space-y-2 mb-6">
-          <div onClick={isLoading ? null : createNewChat} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform text-primary font-bold border-2 border-primary bg-primary/10 hover:bg-primary/20">
-            <span className="material-symbols-outlined">add_circle</span>
-            <span className="font-label-md">New Chat</span>
-          </div>
-          
-          <div onClick={clearMemory} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform text-on-surface-variant/70 hover:bg-white/5 hover:backdrop-blur-xl transition-all duration-300">
-            <span className="material-symbols-outlined">delete</span>
-            <span className="font-label-md">Delete History</span>
-          </div>
+      <Sidebar 
+        isLoading={isLoading}
+        createNewChat={createNewChat}
+        clearMemory={clearMemory}
+        setShowConfig={setShowConfig}
+        chats={chats}
+        activeChatId={activeChatId}
+        setActiveChatId={setActiveChatId}
+        deleteChatById={deleteChatById}
+      />
 
-          <div onClick={() => setShowConfig(true)} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform text-on-surface-variant/70 hover:bg-white/5 hover:backdrop-blur-xl transition-all duration-300">
-            <Settings className="w-6 h-6" />
-            <span className="font-label-md">Settings</span>
-          </div>
-        </div>
-
-        {/* Chat History List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
-          <div className="mb-4 px-2">
-            <span className="text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Recent Chats</span>
-          </div>
-          
-          <div className="space-y-1">
-            {chats.map(chat => (
-              <div 
-                key={chat.id}
-                onClick={() => { if (!isLoading) setActiveChatId(chat.id) }}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300 ${activeChatId === chat.id ? 'bg-primary/20 border-l-2 border-primary text-primary font-bold shadow-lg' : 'text-on-surface-variant/70 hover:bg-white/5'}`}
-              >
-                <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
-                <span className="font-label-md truncate">{chat.title}</span>
-                <button className='ml-auto text-on-surface/50 hover:text-error' onClick={(e) => { e.stopPropagation(); deleteChatById(chat.id); }}><Trash2/></button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
       <main className="ml-[280px] w-[calc(100%-280px)] h-screen flex flex-col relative">
-        <header className="h-16 w-full flex justify-between items-center px-[40px] bg-transparent z-40">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-primary typing-pulse' : 'bg-secondary-container'}`}></div>
-            <h2 className="font-label-md text-[14px] text-on-surface/80 uppercase tracking-widest">
-              {activeChat ? activeChat.title : 'Chatting with Luna'}
-            </h2>
-          </div>
-        </header>
+        <ChatArea 
+          activeChat={activeChat}
+          isLoading={isLoading}
+          messages={messages}
+        />
 
-        {/* --- DYNAMIC MESSAGES AREA --- */}
-        <section className="flex-1 overflow-y-auto px-[40px] py-[24px] flex flex-col gap-[24px]" id="chat-container">
-          
-          {messages.map((msg, index) => {
-            if (msg.role === 'user') {
-              return (
-                <div key={index} className="flex justify-end w-full">
-                  <div className="max-w-[70%] p-5 rounded-2xl rounded-tr-none bg-gradient-to-br from-primary to-on-tertiary-container text-on-primary user-message-glow">
-                    {msg.imageUrl && (
-                      <img src={msg.imageUrl} alt="Uploaded" className="w-full max-w-sm rounded-lg mb-3 object-cover shadow-lg border border-white/20" />
-                    )}
-                    <p className="font-body-md whitespace-pre-wrap">{msg.content}</p>
-                  </div>
-                </div>
-              );
-            } else {
-              return (
-                <div key={index} className="flex justify-start w-full gap-4">
-                  <div className="w-8 h-8 rounded-full glass-panel flex items-center justify-center border border-primary/20 shrink-0">
-                    <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                  </div>
-                  <div className="max-w-[80%] p-6 rounded-2xl rounded-tl-none luna-message-glass">
-                    {msg.isThinking ? (
-                      <div className="flex items-center gap-3 text-primary animate-pulse py-1">
-                        <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
-                        <span className="font-label-md italic opacity-80">Luna is thinking...</span>
-                      </div>
-                    ) : (
-                      <p className="font-body-md leading-relaxed text-on-surface/90 whitespace-pre-wrap">
-                        {msg.content}
-                        {/* Show a blinking cursor while streaming */}
-                        {isLoading && index === messages.length - 1 && <span className="loader">█</span>}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-          })}
-
-        </section>
-
-        {/* --- DYNAMIC INPUT AREA --- */}
-        <footer className="p-[40px] relative z-40 bg-gradient-to-t from-background to-transparent">
-        <div className="h-24 bg-gradient-to-t from-background to-transparent absolute bottom-24 w-full pointer-events-none" />
-
-        {/* --- DOWNLOAD PROGRESS BAR --- */}
-        {downloadProgress.downloading && (
-          <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 animate-fade-in">
-            <div className="glass-panel p-4 rounded-xl flex flex-col gap-2">
-              <div className="flex justify-between items-center text-on-surface">
-                <span className="font-label-md">{downloadProgress.status}</span>
-                <span className="font-display-sm font-bold text-primary">{downloadProgress.percent}%</span>
-              </div>
-              <div className="w-full bg-surface-container rounded-full h-2 overflow-hidden border border-white/5">
-                <div 
-                  className="bg-primary h-full transition-all duration-300 ease-out" 
-                  style={{ width: `${downloadProgress.percent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-          <div className="max-w-[900px] mx-auto relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary-container/20 rounded-full blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative flex items-center gap-4 glass-panel rounded-full p-2 pl-6 border-white/10 group-focus-within:border-secondary-container/50 transition-all shadow-2xl">
-              <input 
-                className="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder-on-surface-variant/40 font-body-md py-4 outline-none" 
-                placeholder={isLoading ? "Luna is thinking..." : "Ask Luna about the cosmos..."} 
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-              />
-              <div className="flex items-center gap-2 pr-2">
-                 <Upload 
-                   onClick={handleFileUpload}
-                   className={`text-on-surface-variant/70 hover:text-primary transition-all duration-300 cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`} 
-                 />
-                <button 
-                  onClick={handleSend}
-                  disabled={isLoading}
-                  className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center send-btn-glow active:scale-90 disabled:opacity-50"
-                >
-                 
-                  <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_upward</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </footer>
+        <InputArea 
+          downloadProgress={downloadProgress}
+          input={input}
+          setInput={setInput}
+          handleKeyDown={handleKeyDown}
+          isLoading={isLoading}
+          handleFileUpload={handleFileUpload}
+          handleSend={handleSend}
+        />
       </main>
     </div>
   )

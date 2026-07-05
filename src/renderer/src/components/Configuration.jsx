@@ -63,14 +63,14 @@ export default function Configuration({ onBack }) {
               <Settings className="w-5 h-5" />
               <span className="font-label-md text-sm">Configuration</span>
             </div>
-            <div className="px-4 py-3 rounded-xl text-on-surface-variant/70 flex items-center gap-3 opacity-50 cursor-not-allowed">
+            {/* <div className="px-4 py-3 rounded-xl text-on-surface-variant/70 flex items-center gap-3 opacity-50 cursor-not-allowed">
               <Shield className="w-5 h-5" />
               <span className="font-label-md text-sm">Privacy</span>
             </div>
             <div className="px-4 py-3 rounded-xl text-on-surface-variant/70 flex items-center gap-3 opacity-50 cursor-not-allowed">
               <RefreshCw className="w-5 h-5" />
               <span className="font-label-md text-sm">Synchronicity</span>
-            </div>
+            </div> */}
           </nav>
 
           <div className="mt-auto p-4 rounded-2xl bg-primary-container/20 border border-primary/10">
@@ -84,8 +84,15 @@ export default function Configuration({ onBack }) {
 
         {/* Content Area */}
         <section className="flex-1 p-10 overflow-y-auto flex flex-col">
+          <button 
+              onClick={onBack}
+              className="px-6 py-3 rounded-xl text-on-surface-variant/80 font-label-md hover:text-on-surface transition-colors flex items-center gap-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back
+            </button>
           <header className="mb-10">
-            <h1 className="font-display-sm text-3xl font-bold text-on-surface mb-2">Configure your Experience</h1>
+            <h1 className="font-display-sm text-3xl font-bold text-on-surface mb-2 ">Configure your Experience</h1>
             <p className="font-body-md text-on-surface-variant">Fine-tune how you and Luna interact within the cosmos.</p>
           </header>
 
@@ -98,7 +105,7 @@ export default function Configuration({ onBack }) {
               </div>
               <div className="space-y-2">
                 <label className="font-label-md text-sm text-on-surface/80 ml-1">Assistant Name</label>
-                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" type="text" defaultValue="Luna" value={assistantName} onChange={(e) => setAssistantName(e.target.value)} />
+                <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" type="text" value={assistantName} onChange={(e) => setAssistantName(e.target.value)} />
               </div>
             </div>
 
@@ -152,7 +159,7 @@ export default function Configuration({ onBack }) {
                     {model === 'core' && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
                   <div>
-                    <p className="font-label-md text-sm text-on-surface">Luna Core <span className="text-primary/60 ml-2">(Balanced)</span></p>
+                    <p className="font-label-md text-sm text-on-surface">Luna Core <span className="text-primary/60 ml-2">(Balanced)</span>  (Model used <b>phi3</b>)</p>
                     <p className="text-xs text-on-surface-variant/70 mt-1">Standard intelligence for daily assistance and exploration.</p>
                   </div>
                 </label>
@@ -162,7 +169,7 @@ export default function Configuration({ onBack }) {
                     {model === 'pro' && <div className="w-2 h-2 rounded-full bg-tertiary" />}
                   </div>
                   <div>
-                    <p className="font-label-md text-sm text-on-surface">Luna Pro <span className="text-tertiary ml-2">(Advanced Reasoning)</span></p>
+                    <p className="font-label-md text-sm text-on-surface">Luna Pro <span className="text-tertiary ml-2">(Advanced Reasoning)</span>  (Model used <b>llama3</b>)</p>
                     <p className="text-xs text-on-surface-variant/70 mt-1">High-capacity compute for complex analytical tasks.</p>
                   </div>
                 </label>
@@ -172,7 +179,7 @@ export default function Configuration({ onBack }) {
                     {model === 'flash' && <div className="w-2 h-2 rounded-full bg-secondary-container" />}
                   </div>
                   <div>
-                    <p className="font-label-md text-sm text-on-surface">Luna Flash <span className="text-secondary-container ml-2">(High Speed)</span></p>
+                    <p className="font-label-md text-sm text-on-surface">Luna Flash <span className="text-secondary-container ml-2">(High Speed)</span>  (Model used <b>gemma3</b>)</p>
                     <p className="text-xs text-on-surface-variant/70 mt-1">Low-latency responses for rapid-fire interactions.</p>
                   </div>
                 </label>
@@ -182,14 +189,8 @@ export default function Configuration({ onBack }) {
           </div>
 
           {/* Footer Actions */}
-          <footer className="pt-10 flex items-center justify-between border-t border-white/5 mt-8">
-            <button 
-              onClick={onBack}
-              className="px-6 py-3 rounded-xl text-on-surface-variant/80 font-label-md hover:text-on-surface transition-colors flex items-center gap-2"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back
-            </button>
+          <footer className="pt-10 flex items-center justify-center border-t border-white/5 mt-8">
+            
             <button 
               onClick={handleSave}
               disabled={isSaving}
