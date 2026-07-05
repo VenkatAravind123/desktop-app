@@ -7,6 +7,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('hasOnboarded'))
   const [showConfig, setShowConfig] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState({ downloading: false, percent: 0, status: '' })
   
   // Multi-Session Chat State
   const [chats, setChats] = useState([])
@@ -89,19 +90,73 @@ function App() {
   const activeChat = chats.find(c => c.id === activeChatId);
   const messages = (activeChat && activeChat.messages) ? activeChat.messages : [];
 
+  const pullModel = async (modelName, originalMessage, imageObj) => {
+    try {
+      setDownloadProgress({ downloading: true, percent: 0, status: `Downloading ${modelName}...` });
+      
+      const response = await fetch('http://localhost:11434/api/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: modelName })
+      });
+
+      if (!response.ok) throw new Error("Failed to pull model");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.total && parsed.completed) {
+              const percent = Math.round((parsed.completed / parsed.total) * 100);
+              setDownloadProgress({ downloading: true, percent, status: parsed.status });
+            } else if (parsed.status) {
+              setDownloadProgress(prev => ({ ...prev, status: parsed.status }));
+            }
+          } catch (e) {}
+        }
+      }
+      
+      // Finished downloading!
+      setDownloadProgress({ downloading: false, percent: 0, status: '' });
+      // Resume original message
+      await handleSend(originalMessage, imageObj, true); 
+    } catch (error) {
+      console.error("Pull error:", error);
+      setDownloadProgress({ downloading: false, percent: 0, status: '' });
+      updateActiveChat(prevMsgs => {
+        const newMsgs = [...prevMsgs];
+        newMsgs[newMsgs.length - 1].content = `⚠️ Failed to download model: ${error.message}`;
+        return newMsgs;
+      });
+      setIsLoading(false);
+    }
+  };
+
   // --- OLLAMA AI INTEGRATION ---
-  const handleSend = async (forcedInput = null, imageObj = null) => {
+  const handleSend = async (forcedInput = null, imageObj = null, isResume = false) => {
     // If we passed a string directly, use it. Otherwise use the state.
     const messageToUse = typeof forcedInput === 'string' ? forcedInput : input;
     
-    if ((!messageToUse.trim() && !imageObj) || isLoading || !activeChatId) return;
+    if ((!messageToUse.trim() && !imageObj) || (!isResume && isLoading) || !activeChatId) return;
 
     const userMessage = messageToUse.trim();
     if (typeof forcedInput !== 'string') {
       setInput(''); // Only clear the input box if we used the input box
     }
     
-    setIsLoading(true);
+    if (!isResume) setIsLoading(true);
 
     // Helper function to safely update the active chat's messages
     const updateActiveChat = (updaterFn) => {
@@ -121,11 +176,20 @@ function App() {
       }));
     };
 
-    // 1. Add user message to UI
-    updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: userMessage, imageUrl: imageObj?.url }]);
+    if (!isResume) {
+      // 1. Add user message to UI
+      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: userMessage, imageUrl: imageObj?.url }]);
 
-    // 2. Add a blank AI message placeholder
-    updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '' }]);
+      // 2. Add a blank AI message placeholder
+      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '' }]);
+    } else {
+      // Clear the error message placeholder to retry
+      updateActiveChat(prevMsgs => {
+        const newMsgs = [...prevMsgs];
+        newMsgs[newMsgs.length - 1].content = '';
+        return newMsgs;
+      });
+    }
 
     // --- DESKTOP AUTOMATION CHECK ---
     if (userMessage.toLowerCase().startsWith('open notepad')) {
@@ -162,19 +226,19 @@ function App() {
     }
     // --------------------------------
 
-    // 
+    // 1. Grab User Preferences from LocalStorage
+    const sysDesignation = localStorage.getItem('luna-designation') || 'Commander';
+    const sysName = localStorage.getItem('luna-assistantName') || 'Luna';
+    const sysLanguage = localStorage.getItem('luna-language') || 'Universal English';
+    const selectedModelSetting = localStorage.getItem('luna-model') || 'core';
+    
+    // Determine actual Ollama model name based on UI setting
+    let ollamaModel = 'phi3';
+    if (imageObj) ollamaModel = 'llava';
+    else if (selectedModelSetting === 'pro') ollamaModel = 'llama3';
+    else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2';
+
     try {
-      // 1. Grab User Preferences from LocalStorage
-      const sysDesignation = localStorage.getItem('luna-designation') || 'Commander';
-      const sysName = localStorage.getItem('luna-assistantName') || 'Luna';
-      const sysLanguage = localStorage.getItem('luna-language') || 'Universal English';
-      const selectedModelSetting = localStorage.getItem('luna-model') || 'core';
-      
-      // Determine actual Ollama model name based on UI setting
-      let ollamaModel = 'phi3';
-      if (imageObj) ollamaModel = 'llava';
-      else if (selectedModelSetting === 'pro') ollamaModel = 'llama3'; // Or whatever large model you have
-      else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2'; // Or whatever fast model you have
       // 2. Build the System Prompt
       const systemPrompt = `You are a highly advanced AI named ${sysName}. You are assisting ${sysDesignation}. You must always respond in ${sysLanguage}. Be helpful, concise, and stay in character.`;
       // 3. Gather the last 10 messages from the active chat so Luna remembers context
@@ -205,37 +269,58 @@ function App() {
           stream: true 
         })
       });
-      if (!response.ok) throw new Error('Ollama connection failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Ollama Error: ${errorText || response.statusText}`);
+      }
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
         
+        // Keep the last partial line in the buffer
+        buffer = lines.pop();
+
         for (const line of lines) {
-          const parsed = JSON.parse(line);
-          // Note: /api/chat returns parsed.message.content instead of parsed.response!
-          if (parsed.message && parsed.message.content) {
-            updateActiveChat(prevMsgs => {
-              const newMsgs = [...prevMsgs];
-              const lastMessage = {...newMsgs[newMsgs.length - 1]};
-              lastMessage.content += parsed.message.content;
-              newMsgs[newMsgs.length - 1] = lastMessage;
-              return newMsgs;
-            });
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.message && parsed.message.content) {
+              updateActiveChat(prevMsgs => {
+                const newMsgs = [...prevMsgs];
+                const lastMessage = {...newMsgs[newMsgs.length - 1]};
+                lastMessage.content += parsed.message.content;
+                newMsgs[newMsgs.length - 1] = lastMessage;
+                return newMsgs;
+              });
+            }
+          } catch (e) {
+            console.warn("Failed to parse Ollama chunk:", line);
           }
         }
       }
+      
+      setIsLoading(false);
     } catch (error) {
+      if (error.message.includes('not found') && !isResume) {
+         // Auto-download the missing model!
+         pullModel(ollamaModel, userMessage, imageObj);
+         return; 
+      }
+      
       console.error(error);
       updateActiveChat(prevMsgs => {
         const newMsgs = [...prevMsgs];
-        newMsgs[newMsgs.length - 1].content = "⚠️ Error: Could not connect to Ollama. Make sure it is running!";
+        newMsgs[newMsgs.length - 1].content = `⚠️ ${error.message}`;
         return newMsgs;
       });
-    } finally {
       setIsLoading(false);
     }
   }
@@ -380,6 +465,26 @@ function App() {
 
         {/* --- DYNAMIC INPUT AREA --- */}
         <footer className="p-[40px] relative z-40 bg-gradient-to-t from-background to-transparent">
+        <div className="h-24 bg-gradient-to-t from-background to-transparent absolute bottom-24 w-full pointer-events-none" />
+
+        {/* --- DOWNLOAD PROGRESS BAR --- */}
+        {downloadProgress.downloading && (
+          <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 animate-fade-in">
+            <div className="glass-panel p-4 rounded-xl flex flex-col gap-2">
+              <div className="flex justify-between items-center text-on-surface">
+                <span className="font-label-md">{downloadProgress.status}</span>
+                <span className="font-display-sm font-bold text-primary">{downloadProgress.percent}%</span>
+              </div>
+              <div className="w-full bg-surface-container rounded-full h-2 overflow-hidden border border-white/5">
+                <div 
+                  className="bg-primary h-full transition-all duration-300 ease-out" 
+                  style={{ width: `${downloadProgress.percent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
           <div className="max-w-[900px] mx-auto relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary-container/20 rounded-full blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
             <div className="relative flex items-center gap-4 glass-panel rounded-full p-2 pl-6 border-white/10 group-focus-within:border-secondary-container/50 transition-all shadow-2xl">
