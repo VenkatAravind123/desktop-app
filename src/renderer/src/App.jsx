@@ -180,13 +180,14 @@ function App() {
       // 1. Add user message to UI
       updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: userMessage, imageUrl: imageObj?.url }]);
 
-      // 2. Add a blank AI message placeholder
-      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '' }]);
+      // 2. Add a blank AI message placeholder with isThinking flag
+      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '', isThinking: true }]);
     } else {
       // Clear the error message placeholder to retry
       updateActiveChat(prevMsgs => {
         const newMsgs = [...prevMsgs];
         newMsgs[newMsgs.length - 1].content = '';
+        newMsgs[newMsgs.length - 1].isThinking = true;
         return newMsgs;
       });
     }
@@ -255,7 +256,7 @@ function App() {
       if (imageObj) {
         currentMessagePayload.images = [imageObj.data];
       }
-      // 5. Send request to the CHAT endpoint instead of Generate
+      // 5. Send request to the CHAT endpoint with optimized options for speed
       const response = await fetch('http://localhost:11434/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -266,7 +267,11 @@ function App() {
             ...recentHistory,
             currentMessagePayload
           ],
-          stream: true 
+          stream: true,
+          options: {
+            num_ctx: 2048, // Limit context to save memory and speed up processing
+            num_thread: 8  // Use more CPU threads for faster generation
+          }
         })
       });
       if (!response.ok) {
@@ -296,6 +301,7 @@ function App() {
               updateActiveChat(prevMsgs => {
                 const newMsgs = [...prevMsgs];
                 const lastMessage = {...newMsgs[newMsgs.length - 1]};
+                lastMessage.isThinking = false; // Turn off thinking state!
                 lastMessage.content += parsed.message.content;
                 newMsgs[newMsgs.length - 1] = lastMessage;
                 return newMsgs;
@@ -318,6 +324,7 @@ function App() {
       console.error(error);
       updateActiveChat(prevMsgs => {
         const newMsgs = [...prevMsgs];
+        newMsgs[newMsgs.length - 1].isThinking = false;
         newMsgs[newMsgs.length - 1].content = `⚠️ ${error.message}`;
         return newMsgs;
       });
@@ -450,11 +457,18 @@ function App() {
                     <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                   </div>
                   <div className="max-w-[80%] p-6 rounded-2xl rounded-tl-none luna-message-glass">
-                    <p className="font-body-md leading-relaxed text-on-surface/90 whitespace-pre-wrap">
-                      {msg.content}
-                      {/* Show a blinking cursor while streaming */}
-                      {isLoading && index === messages.length - 1 && <span className="loader">█</span>}
-                    </p>
+                    {msg.isThinking ? (
+                      <div className="flex items-center gap-3 text-primary animate-pulse py-1">
+                        <span className="material-symbols-outlined text-lg animate-spin">progress_activity</span>
+                        <span className="font-label-md italic opacity-80">Luna is thinking...</span>
+                      </div>
+                    ) : (
+                      <p className="font-body-md leading-relaxed text-on-surface/90 whitespace-pre-wrap">
+                        {msg.content}
+                        {/* Show a blinking cursor while streaming */}
+                        {isLoading && index === messages.length - 1 && <span className="loader">█</span>}
+                      </p>
+                    )}
                   </div>
                 </div>
               );
