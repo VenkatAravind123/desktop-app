@@ -10,7 +10,12 @@ const api = {
   saveChats: (chatsArray) => ipcRenderer.invoke('save-chats', chatsArray),
   clearChats: () => ipcRenderer.invoke('clear-chats'),
   deleteChatById: (chatsArray,id) => ipcRenderer.invoke('delete-chat-by-id',chatsArray,id),
-  readFile: () => ipcRenderer.invoke('read-file')
+  readFile: () => ipcRenderer.invoke('read-file'),
+  installOllama: () => ipcRenderer.invoke('install-ollama'),
+  launchApp: (appName) => ipcRenderer.invoke('launch-app', appName),
+  createReminder: (task, ms) => ipcRenderer.invoke('create-reminder', task, ms),
+  findFile: (fileName) => ipcRenderer.invoke('find-file', fileName),
+  organizeDownloads: () => ipcRenderer.invoke('organize-downloads')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

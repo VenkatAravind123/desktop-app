@@ -11,6 +11,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('hasOnboarded'))
   const [showConfig, setShowConfig] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState({ downloading: false, percent: 0, status: '' })
+    const [attachedFile, setAttachedFile] = useState(null);
   
   // Multi-Session Chat State
   const [chats, setChats] = useState([])
@@ -147,14 +148,50 @@ function App() {
     }
   };
 
+    const runOllamaInstaller = async () => {
+    setDownloadProgress({ downloading: true, percent: 50, status: `Please click 'Yes' on the Admin prompt and follow the progress in the installer window!` });
+    try {
+      const result = await window.api.installOllama();
+      if (result.success) {
+        // We let the user know it's running in the other window
+        setTimeout(() => {
+          setDownloadProgress({ downloading: false, percent: 0, status: '' });
+          alert("Once the installer window finishes downloading and closing, you can send your message again!");
+        }, 5000);
+      } else {
+        setDownloadProgress({ downloading: false, percent: 0, status: '' });
+        alert(`Failed to install: ${result.message}`);
+      }
+    } catch (e) {
+      setDownloadProgress({ downloading: false, percent: 0, status: '' });
+      alert(e.message);
+    }
+  };
+
   // --- OLLAMA AI INTEGRATION ---
   const handleSend = async (forcedInput = null, imageObj = null, isResume = false) => {
     // If we passed a string directly, use it. Otherwise use the state.
     const messageToUse = typeof forcedInput === 'string' ? forcedInput : input;
     
-    if ((!messageToUse.trim() && !imageObj) || (!isResume && isLoading) || !activeChatId) return;
+    // Default to the component's state if no parameter is provided
+    const fileToUse = imageObj || attachedFile;
 
-    const userMessage = messageToUse.trim();
+    if ((!messageToUse.trim() && !fileToUse) || (!isResume && isLoading) || !activeChatId) return;
+
+    const rawUserMessage = messageToUse.trim();
+
+    // Merge PDF text with the prompt if a PDF is attached
+    let finalUserMessage = rawUserMessage;
+    let finalImageObj = fileToUse;
+
+    if (fileToUse && fileToUse.type === 'pdf') {
+      const truncatedText = fileToUse.data.substring(0, 4000);
+      finalUserMessage = `[Analyzing Document: "${fileToUse.name}"]\n${truncatedText}\n\nQuestion: ${rawUserMessage || "Summarize this PDF."}`;
+      finalImageObj = null;
+    }
+
+    setAttachedFile(null); // Clear attachment box in UI!
+
     if (typeof forcedInput !== 'string') {
       setInput(''); // Only clear the input box if we used the input box
     }
@@ -170,7 +207,7 @@ function App() {
           // Auto-generate a title if it's the very first user message
           let newTitle = chat.title;
           if (chat.title === "New Conversation" && newMessages.length === 2) {
-             newTitle = userMessage.slice(0, 25) + (userMessage.length > 25 ? '...' : '');
+             newTitle = rawUserMessage.slice(0, 25) + (rawUserMessage.length > 25 ? '...' : '');
           }
           
           return { ...chat, messages: newMessages, title: newTitle };
@@ -181,7 +218,7 @@ function App() {
 
     if (!isResume) {
       // 1. Add user message to UI
-      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: userMessage, imageUrl: imageObj?.url }]);
+      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: rawUserMessage, imageUrl: fileToUse?.url, fileName: fileToUse?.type === 'pdf' ? fileToUse.name : null }]);
 
       // 2. Add a blank AI message placeholder with isThinking flag
       updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '', isThinking: true }]);
@@ -195,36 +232,50 @@ function App() {
       });
     }
 
-    // --- DESKTOP AUTOMATION CHECK ---
-    if (userMessage.toLowerCase().startsWith('open notepad')) {
-      const result = await window.api.runDesktopCommand('notepad.exe');
-      updateActiveChat(prevMsgs => {
-        const newMsgs = [...prevMsgs];
-        newMsgs[newMsgs.length - 1] = { role: 'ai', content: result };
-        return newMsgs;
-      });
-      setIsLoading(false);
-      return; // Stop here!
-    }
+    // --- INTELLIGENT AUTOMATION PIPELINE ---
+    const lowerMsg = rawUserMessage.toLowerCase();
+    let automationResult = null;
 
-    if (userMessage.toLowerCase().startsWith('create note')) {
-      const parts = userMessage.split(' ');
+    if (lowerMsg.startsWith('open ') || lowerMsg.startsWith('launch ')) {
+      const appName = lowerMsg.replace('open ', '').replace('launch ', '').trim();
+      automationResult = await window.api.launchApp(appName);
+    } 
+    else if (lowerMsg.startsWith('remind me to ')) {
+      // Extract task and minutes (e.g. "remind me to drink water in 5 minutes")
+      const match = lowerMsg.match(/remind me to (.+) in (\d+) minute/);
+      if (match) {
+        const task = match[1];
+        const minutes = parseInt(match[2]);
+        automationResult = await window.api.createReminder(task, minutes * 60000);
+      } else {
+        automationResult = "Please use the format: 'remind me to [task] in [number] minutes'";
+      }
+    }
+    else if (lowerMsg.startsWith('find ')) {
+      const fileName = lowerMsg.replace('find ', '').trim();
+      automationResult = await window.api.findFile(fileName);
+    }
+    else if (lowerMsg.includes('organize my downloads') || lowerMsg.includes('clean my downloads')) {
+      automationResult = await window.api.organizeDownloads();
+    }
+    else if (lowerMsg.startsWith('create note ')) {
+      const parts = rawUserMessage.split(' ');
       if (parts.length >= 4) {
         const filename = parts[2];
         const content = parts.slice(3).join(' ');
-        const result = await window.api.createNote(filename, content);
-        updateActiveChat(prevMsgs => {
-          const newMsgs = [...prevMsgs];
-          newMsgs[newMsgs.length - 1] = { role: 'ai', content: result };
-          return newMsgs;
-        });
+        automationResult = await window.api.createNote(filename, content);
       } else {
-        updateActiveChat(prevMsgs => {
-          const newMsgs = [...prevMsgs];
-          newMsgs[newMsgs.length - 1] = { role: 'ai', content: "Please use the format: 'create note filename.txt your message here'" };
-          return newMsgs;
-        });
+        automationResult = "Please use the format: 'create note filename.txt your message here'";
       }
+    }
+
+    // If an automation was triggered, show the result and STOP (don't send to Ollama)
+    if (automationResult) {
+      updateActiveChat(prevMsgs => {
+        const newMsgs = [...prevMsgs];
+        newMsgs[newMsgs.length - 1] = { role: 'ai', content: automationResult };
+        return newMsgs;
+      });
       setIsLoading(false);
       return; 
     }
@@ -235,16 +286,25 @@ function App() {
     const sysName = localStorage.getItem('luna-assistantName') || 'Luna';
     const sysLanguage = localStorage.getItem('luna-language') || 'Universal English';
     const selectedModelSetting = localStorage.getItem('luna-model') || 'core';
+    const sysPersonality = localStorage.getItem('luna-personality') || 'balanced';
     
+    // Personality Injection
+    let personalityPrompt = "Be helpful, concise, and stay in character.";
+    if (sysPersonality === 'concise') {
+        personalityPrompt = "You must be extremely concise and direct. Give short, no-nonsense answers without pleasantries.";
+    } else if (sysPersonality === 'creative') {
+        personalityPrompt = "You must be highly creative, descriptive, and detailed. Write elegantly and brainstorm freely.";
+    }
+
     // Determine actual Ollama model name based on UI setting
     let ollamaModel = 'phi3';
-    if (imageObj) ollamaModel = 'llava';
+    if (finalImageObj) ollamaModel = 'llava';
     else if (selectedModelSetting === 'pro') ollamaModel = 'llama3';
     else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2';
 
     try {
       // 2. Build the System Prompt
-      const systemPrompt = `You are a highly advanced AI named ${sysName}. You are assisting ${sysDesignation}. You must always respond in ${sysLanguage}. Be helpful, concise, and stay in character.`;
+      const systemPrompt = `You are a highly advanced AI named ${sysName}. You are assisting ${sysDesignation}. You must always respond in ${sysLanguage}. ${personalityPrompt}`;
       // 3. Gather the last 10 messages from the active chat so Luna remembers context
       const recentHistory = (activeChat?.messages || []).slice(-10).map(msg => ({
         role: msg.role === 'ai' ? 'assistant' : 'user',
@@ -253,11 +313,11 @@ function App() {
       // 4. Construct the final message payload for the /api/chat endpoint
       const currentMessagePayload = {
         role: 'user',
-        content: userMessage || 'What is in this image?'
+        content: finalUserMessage || 'What is in this image?'
       };
       
-      if (imageObj) {
-        currentMessagePayload.images = [imageObj.data];
+      if (finalImageObj) {
+        currentMessagePayload.images = [finalImageObj.data];
       }
       // 5. Send request to the CHAT endpoint with optimized options for speed
       const response = await fetch('http://localhost:11434/api/chat', {
@@ -271,9 +331,12 @@ function App() {
             currentMessagePayload
           ],
           stream: true,
+          keep_alive: "20m",
           options: {
-            num_ctx: 2048, // Limit context to save memory and speed up processing
-            num_thread: 8  // Use more CPU threads for faster generation
+            num_ctx: 1024, 
+            num_thread: 8,  
+            num_predict: 256,
+            temperature: 0.5
           }
         })
       });
@@ -320,8 +383,20 @@ function App() {
     } catch (error) {
       if (error.message.includes('not found') && !isResume) {
          // Auto-download the missing model!
-         pullModel(ollamaModel, userMessage, imageObj);
+         pullModel(ollamaModel, finalUserMessage, finalImageObj);
          return; 
+      }
+
+      if (error.message.includes('Failed to fetch') && !isResume) {
+          updateActiveChat(prevMsgs => {
+            const newMsgs = [...prevMsgs];
+            newMsgs[newMsgs.length - 1].isThinking = false;
+            newMsgs[newMsgs.length - 1].isInstallPrompt = true;
+            newMsgs[newMsgs.length - 1].content = `⚠️ Ollama AI Engine Not Found`;
+            return newMsgs;
+          });
+          setIsLoading(false);
+          return;
       }
       
       console.error(error);
@@ -336,19 +411,13 @@ function App() {
   }
 
   // --- FILE UPLOAD INTEGRATION ---
+   // --- FILE UPLOAD INTEGRATION ---
   const handleFileUpload = async () => {
     if (isLoading || !activeChatId) return;
     try {
       const fileResult = await window.api.readFile();
       if (!fileResult) return; // User canceled
-
-      if (fileResult.type === 'pdf') {
-        const truncatedText = fileResult.data.substring(0, 4000);
-        const prompt = `Please summarize the following PDF document:\n\n${truncatedText}`;
-        await handleSend(prompt);
-      } else if (fileResult.type === 'image') {
-        await handleSend("Can you describe this image?", fileResult);
-      }
+      setAttachedFile(fileResult); // Stage the file!
     } catch (error) {
       console.error("File Upload Error:", error);
     }
@@ -389,6 +458,7 @@ function App() {
           activeChat={activeChat}
           isLoading={isLoading}
           messages={messages}
+          runOllamaInstaller={runOllamaInstaller}
         />
 
         <InputArea 
@@ -398,7 +468,9 @@ function App() {
           handleKeyDown={handleKeyDown}
           isLoading={isLoading}
           handleFileUpload={handleFileUpload}
-          handleSend={handleSend}
+          handleSend={handleSend} // Send handles reading state automatically!
+          attachedFile={attachedFile}
+          setAttachedFile={setAttachedFile}
         />
       </main>
     </div>

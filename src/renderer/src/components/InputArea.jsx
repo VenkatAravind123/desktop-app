@@ -1,4 +1,5 @@
 import { Upload } from 'lucide-react';
+import { CgAttachment } from "react-icons/cg";
 
 export default function InputArea({
   downloadProgress,
@@ -7,7 +8,9 @@ export default function InputArea({
   handleKeyDown,
   isLoading,
   handleFileUpload,
-  handleSend
+  handleSend,
+  attachedFile,
+  setAttachedFile
 }) {
   return (
     <footer className="p-[40px] relative z-40 bg-gradient-to-t from-background to-transparent">
@@ -31,9 +34,29 @@ export default function InputArea({
         </div>
       )}
 
+      {/* --- ATTACHED FILE PREVIEW (Cleanly placed above the input box) --- */}
+      {attachedFile && (
+        <div className="max-w-[900px] mx-auto mb-4 animate-fade-in flex">
+          <div className="px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 text-on-surface flex items-center gap-3 text-sm">
+            <span className="material-symbols-outlined text-primary">
+              {attachedFile.type === 'pdf' ? 'description' : 'image'}
+            </span>
+            <span className="font-mono text-xs max-w-xs truncate">{attachedFile.name}</span>
+            <button 
+              onClick={() => setAttachedFile(null)}
+              className="text-on-surface-variant/60 hover:text-error transition-colors flex items-center"
+            >
+              <span className="material-symbols-outlined text-xs">close</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-[900px] mx-auto relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-secondary-container/20 rounded-full blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
         <div className="relative flex items-center gap-4 glass-panel rounded-full p-2 pl-6 border-white/10 group-focus-within:border-secondary-container/50 transition-all shadow-2xl">
+        <CgAttachment
+            onClick={handleFileUpload} style={{width:"20px",height:"20px",color:"var(--text-on-surface-variant)", cursor:"pointer"}}/>
           <input 
             className="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder-on-surface-variant/40 font-body-md py-4 outline-none" 
             placeholder={isLoading ? "Luna is thinking..." : "Ask Luna about the cosmos..."} 
@@ -43,13 +66,11 @@ export default function InputArea({
             onKeyDown={handleKeyDown}
             disabled={isLoading}
           />
+          
           <div className="flex items-center gap-2 pr-2">
-             <Upload 
-               onClick={handleFileUpload}
-               className={`text-on-surface-variant/70 hover:text-primary transition-all duration-300 cursor-pointer ${isLoading ? 'opacity-50 pointer-events-none' : ''}`} 
-             />
+            
             <button 
-              onClick={() => handleSend(null, null, false)} // ensure clean call from button
+              onClick={() => handleSend()} // Clean call (reads attachedFile state automatically)
               disabled={isLoading}
               className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center send-btn-glow active:scale-90 disabled:opacity-50"
             >

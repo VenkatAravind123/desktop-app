@@ -26,7 +26,7 @@ export default function Sidebar({
       
       {/* Action Buttons */}
       <div className="px-6 space-y-2 mb-6">
-        <div onClick={isLoading ? null : createNewChat} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform text-primary font-bold border-2 border-primary bg-primary/10 hover:bg-primary/20">
+        <div onClick={isLoading ? null : createNewChat} className="flex items-center gap-4 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform text-on-primary font-bold bg-primary hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(214,189,231,0.4)] transition-all duration-300">
           <span className="material-symbols-outlined">add_circle</span>
           <span className="font-label-md">New Chat</span>
         </div>
@@ -60,6 +60,22 @@ export default function Sidebar({
               <button className='ml-auto text-on-surface/50 hover:text-error' onClick={(e) => { e.stopPropagation(); deleteChatById(chat.id); }}><Trash2/></button>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Active Model Indicator */}
+      <div className="px-6 pt-4 border-t border-white/5 mt-auto flex flex-col gap-1.5">
+        <span className="text-[10px] font-mono-label text-on-surface-variant/40 uppercase tracking-widest">Active Model</span>
+        <div className="flex items-center gap-2 text-xs font-bold text-primary">
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+          <span>
+            {(() => {
+              const model = localStorage.getItem('luna-model') || 'core';
+              if (model === 'pro') return 'Luna Pro (llama3)';
+              if (model === 'flash') return 'Luna Flash (gemma2)';
+              return 'Luna Core (phi3)';
+            })()}
+          </span>
         </div>
       </div>
     </aside>

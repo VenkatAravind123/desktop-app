@@ -1,5 +1,5 @@
 import Store from 'electron-store'
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, Notification } from 'electron'
 import { join } from 'path'
 import { exec } from 'child_process' //
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -104,7 +104,7 @@ ipcMain.handle('delete-chat-by-id', (event, chatsArray, id) => {
   return true;
 })
 
-  ipcMain.handle('read-file', async () => {
+    ipcMain.handle('read-file', async () => {
     try {
       const result = await dialog.showOpenDialog({
         properties: ['openFile'],
@@ -116,26 +116,160 @@ ipcMain.handle('delete-chat-by-id', (event, chatsArray, id) => {
       }
 
       const filePath = result.filePaths[0];
+      const fileName = filePath.split(/[\\/]/).pop(); // Get filename!
       const ext = filePath.split('.').pop().toLowerCase();
       const dataBuffer = fs.readFileSync(filePath);
       
       if (ext === 'pdf') {
-        // Safely load and unwrap the module
         const pdfModule = eval("require('pdf-parse')");
         const pdfFn = typeof pdfModule === 'function' ? pdfModule : pdfModule.default;
-        if (typeof pdfFn !== 'function') throw new Error("pdf-parse is still not a function.");
+        if (typeof pdfFn !== 'function') throw new Error("pdf-parse is not a function.");
         const data = await pdfFn(dataBuffer);
-        return { type: 'pdf', data: data.text };
+        return { type: 'pdf', data: data.text, name: fileName };
       } else {
-        // It's an image
         const base64 = dataBuffer.toString('base64');
-        return { type: 'image', data: base64, url: `file://${filePath.replace(/\\/g, '/')}` };
+        return { type: 'image', data: base64, url: `file://${filePath.replace(/\\/g, '/')}`, name: fileName };
       }
     } catch (error) {
-    console.error('Failed to read PDF:', error);
-    throw new Error(error.message);
+      console.error('Failed to read file:', error);
+      throw new Error(error.message);
+    }
+  });
+
+   ipcMain.handle('install-ollama', async () => {
+    return new Promise((resolve) => {
+      // Elevate process (-Verb RunAs) to trigger UAC and launch winget in a visible terminal
+      const command = `powershell -Command "Start-Process powershell -ArgumentList '-NoExit', '-Command', 'echo \\\"Initializing Ollama Installation...\\\"; winget install Ollama.Ollama -e --accept-package-agreements --accept-source-agreements' -Verb RunAs"`;
+      exec(command, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Ollama Install Error:`, error);
+          resolve({ success: false, message: error.message });
+        } else {
+          resolve({ success: true, message: 'Installer launched in terminal.' });
+        }
+      });
+    });
+  });
+
+  //Dynamic App Launcher (With Security Dialog)
+  ipcMain.handle('launch-app', async (event, appName) => {
+    const focusWindow = BrowserWindow.getFocusedWindow();
+    const result = await dialog.showMessageBox(focusWindow, {
+      type: 'question',
+      buttons: ['Allow', 'Deny'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Permission Request 🛡️',
+      message: `Permission required to launch "${appName}"`,
+      detail: `Luna is attempting to open this desktop application. Do you grant permission?`
+    });
+
+    if (result.response === 0) { // Allow
+      return new Promise((resolve) => {
+        let target = appName;
+        const appMappings = {
+          'whatsapp': 'whatsapp://',
+          'spotify': 'spotify://',
+          'discord': 'discord://',
+          'slack': 'slack://',
+          'chrome': 'chrome.exe',
+          'notepad': 'notepad.exe',
+          'calculator': 'calc.exe',
+          'paint': 'mspaint.exe'
+        };
+        
+        const cleanName = appName.toLowerCase().trim();
+        if (appMappings[cleanName]) {
+          target = appMappings[cleanName];
+        }
+
+        exec(`start ${target}`, (error) => {
+          if (error) resolve(`Failed to launch ${appName}. It might not be installed or registered on your system.`);
+          else resolve(`Successfully Launched ${appName}!`);
+        });
+      });
+    } else { // Deny
+      return `Access Denied: You did not grant permission to launch ${appName}.`;
+    }
+  });
+
+  // 2. Native Reminders (Upgraded for guaranteed delivery)
+ipcMain.handle('create-reminder', (event, task, milliseconds) => {
+  setTimeout(() => {
+    // Attempt the native toast notification
+    if (Notification.isSupported()) {
+      new Notification({
+        title: 'Luna Reminder 🌙',
+        body: task
+      }).show();
+    }
+    
+    // Force a native dialog box popup to guarantee they see it!
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Luna Reminder 🌙',
+      message: 'Time for your task!',
+      detail: task,
+      buttons: ['Acknowledge']
+    });
+    
+  }, milliseconds);
+  
+  return `I have set a reminder for: "${task}". You will receive a popup shortly!`;
+});
+
+  ipcMain.handle('find-file', async (event, fileName) => {
+  return new Promise((resolve) => {
+    const searchPath = join(app.getPath('home'), 'Downloads');
+    // PowerShell command to quickly find a file by name
+    const command = `powershell -Command "Get-ChildItem -Path '${searchPath}' -Recurse -Filter '*${fileName}*' -ErrorAction SilentlyContinue | Select-Object -First 5 -ExpandProperty FullName"`;
+    
+    exec(command, (error, stdout) => {
+      if (stdout.trim()) {
+        resolve(`I found these files:\n${stdout.trim()}`);
+      } else {
+        resolve(`I couldn't find any files matching "${fileName}" in your Downloads folder.`);
+      }
+    });
+  });
+});
+// 4. Organize Downloads Folder
+ipcMain.handle('organize-downloads', () => {
+  try {
+    const downloadsPath = app.getPath('downloads');
+    const files = fs.readdirSync(downloadsPath);
+    
+    const folders = {
+      'Images': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+      'Documents': ['.pdf', '.docx', '.txt', '.xlsx', '.csv'],
+      'Installers': ['.exe', '.msi']
+    };
+    let movedCount = 0;
+    // Create folders if they don't exist
+    Object.keys(folders).forEach(folder => {
+      if (!fs.existsSync(join(downloadsPath, folder))) fs.mkdirSync(join(downloadsPath, folder));
+    });
+    // Move files based on extension
+    files.forEach(file => {
+      const filePath = join(downloadsPath, file);
+      if (fs.statSync(filePath).isFile()) {
+        const ext = file.substring(file.lastIndexOf('.')).toLowerCase();
+        for (const [folder, exts] of Object.entries(folders)) {
+          if (exts.includes(ext)) {
+            fs.renameSync(filePath, join(downloadsPath, folder, file));
+            movedCount++;
+            break;
+          }
+        }
+      }
+    });
+    return `Successfully organized ${movedCount} files in your Downloads folder!`;
+  } catch (error) {
+    return `Failed to organize downloads: ${error.message}`;
   }
 });
+
+   
 
   createWindow()
 

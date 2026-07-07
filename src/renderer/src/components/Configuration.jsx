@@ -6,7 +6,8 @@ import {
   Moon, 
   Sun, 
   ArrowLeft, 
-  Rocket 
+  Rocket,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function Configuration({ onBack }) {
@@ -16,8 +17,20 @@ export default function Configuration({ onBack }) {
   const [designation,setDesignation] = useState(() => localStorage.getItem('luna-designation') || 'Commander')
   const [assistantName,setAssistantName] = useState(() => localStorage.getItem('luna-assistantName') || 'Luna')
   const [language,setLanguage] = useState(() => localStorage.getItem('luna-language') || 'Universal English')
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem('luna-fontSize') || 'default');
+  const [personality, setPersonality] = useState(() => localStorage.getItem('luna-personality') || 'balanced');
 
+  const [activeTab, setActiveTab] = useState('settings');
   const [isSaving, setIsSaving] = useState(false);
+
+  const handleWipeData = async () => {
+    if (confirm("Are you sure you want to wipe all memories? This cannot be undone.")) {
+        await window.api.clearChats();
+        localStorage.clear();
+        alert("Memory wiped. Luna will restart.");
+        window.location.reload();
+    }
+  }
 
   const handleSave = () => {
     setIsSaving(true);
@@ -27,11 +40,23 @@ export default function Configuration({ onBack }) {
     localStorage.setItem('luna-designation', designation);
     localStorage.setItem('luna-assistantName', assistantName);
     localStorage.setItem('luna-language', language);
+    localStorage.setItem('luna-fontSize', fontSize);
+    localStorage.setItem('luna-personality', personality);
     
     if (theme === 'nova') {
       document.body.classList.add('theme-nova');
     } else {
       document.body.classList.remove('theme-nova');
+    }
+
+    if (fontSize === 'large') {
+      document.body.classList.add('font-large');
+      document.body.classList.remove('font-small');
+    } else if (fontSize === 'small') {
+      document.body.classList.add('font-small');
+      document.body.classList.remove('font-large');
+    } else {
+      document.body.classList.remove('font-large', 'font-small');
     }
 
     setTimeout(() => {
@@ -42,7 +67,7 @@ export default function Configuration({ onBack }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center nebula-bg overflow-hidden p-6 text-on-surface">
       {/* Main Configuration Shell */}
-      <div className="w-full max-w-[900px] h-full max-h-[750px] glass-panel rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative z-10 animate-fade-in">
+      <div className="w-full max-w-[100rem] h-full max-h-[750px] glass-panel rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative z-10 animate-fade-in">
         
         {/* Sidebar */}
         <aside className="w-full md:w-[280px] border-b md:border-b-0 md:border-r border-white/10 p-6 flex flex-col gap-6 bg-surface-container/30">
@@ -59,18 +84,20 @@ export default function Configuration({ onBack }) {
           </div>
 
           <nav className="flex flex-col gap-2 mt-4">
-            <div className="px-4 py-3 rounded-xl bg-white/5 text-primary font-bold border-r-2 border-primary flex items-center gap-3">
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-3 rounded-xl flex items-center gap-3 transition-all w-full text-left ${activeTab === 'settings' ? 'bg-white/5 text-primary font-bold border-r-2 border-primary' : 'text-on-surface-variant/70 hover:bg-white/5'}`}
+            >
               <Settings className="w-5 h-5" />
               <span className="font-label-md text-sm">Configuration</span>
-            </div>
-            {/* <div className="px-4 py-3 rounded-xl text-on-surface-variant/70 flex items-center gap-3 opacity-50 cursor-not-allowed">
+            </button>
+            <button 
+              onClick={() => setActiveTab('privacy')}
+              className={`px-4 py-3 rounded-xl flex items-center gap-3 transition-all w-full text-left ${activeTab === 'privacy' ? 'bg-white/5 text-primary font-bold border-r-2 border-primary' : 'text-on-surface-variant/70 hover:bg-white/5'}`}
+            >
               <Shield className="w-5 h-5" />
-              <span className="font-label-md text-sm">Privacy</span>
-            </div>
-            <div className="px-4 py-3 rounded-xl text-on-surface-variant/70 flex items-center gap-3 opacity-50 cursor-not-allowed">
-              <RefreshCw className="w-5 h-5" />
-              <span className="font-label-md text-sm">Synchronicity</span>
-            </div> */}
+              <span className="font-label-md text-sm">Privacy Dashboard</span>
+            </button>
           </nav>
 
           <div className="mt-auto p-4 rounded-2xl bg-primary-container/20 border border-primary/10">
@@ -86,17 +113,22 @@ export default function Configuration({ onBack }) {
         <section className="flex-1 p-10 overflow-y-auto flex flex-col">
           <button 
               onClick={onBack}
-              className="px-6 py-3 rounded-xl text-on-surface-variant/80 font-label-md hover:text-on-surface transition-colors flex items-center gap-2"
+              className="px-6 py-3 rounded-xl text-on-surface-variant/80 font-label-md hover:text-on-surface transition-colors flex items-center gap-2 bg-primary/90 hover:bg-primary/100"
             >
               <ArrowLeft className="w-5 h-5" />
               Back
             </button>
           <header className="mb-10">
-            <h1 className="font-display-sm text-3xl font-bold text-on-surface mb-2 ">Configure your Experience</h1>
-            <p className="font-body-md text-on-surface-variant">Fine-tune how you and Luna interact within the cosmos.</p>
+            <h1 className="font-display-sm text-3xl font-bold text-on-surface mb-2 ">
+              {activeTab === 'settings' ? 'Configure your Experience' : 'Privacy Dashboard'}
+            </h1>
+            <p className="font-body-md text-on-surface-variant">
+              {activeTab === 'settings' ? 'Fine-tune how you and Luna interact within the cosmos.' : 'Complete transparency and control over your data.'}
+            </p>
           </header>
 
-          <div className="space-y-8 flex-1">
+          {activeTab === 'settings' && (
+          <div className="space-y-8 flex-1 animate-fade-in">
             {/* Form Row: Names */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -106,6 +138,34 @@ export default function Configuration({ onBack }) {
               <div className="space-y-2">
                 <label className="font-label-md text-sm text-on-surface/80 ml-1">Assistant Name</label>
                 <input className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md" type="text" value={assistantName} onChange={(e) => setAssistantName(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Font Size & Personality */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="font-label-md text-sm text-on-surface/80 ml-1">Font Size</label>
+                <select 
+                  className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md cursor-pointer outline-none appearance-none bg-surface/50" 
+                  value={fontSize} 
+                  onChange={(e) => setFontSize(e.target.value)}
+                >
+                  <option value="small" className="bg-surface-container text-on-surface">Small</option>
+                  <option value="default" className="bg-surface-container text-on-surface">Default</option>
+                  <option value="large" className="bg-surface-container text-on-surface">Large</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="font-label-md text-sm text-on-surface/80 ml-1">AI Personality</label>
+                <select 
+                  className="w-full h-12 glass-input rounded-xl px-4 text-on-surface font-body-md cursor-pointer outline-none appearance-none bg-surface/50" 
+                  value={personality} 
+                  onChange={(e) => setPersonality(e.target.value)}
+                >
+                  <option value="concise" className="bg-surface-container text-on-surface">Concise & Direct</option>
+                  <option value="balanced" className="bg-surface-container text-on-surface">Balanced (Default)</option>
+                  <option value="creative" className="bg-surface-container text-on-surface">Creative & Detailed</option>
+                </select>
               </div>
             </div>
 
@@ -187,6 +247,35 @@ export default function Configuration({ onBack }) {
               </div>
             </div>
           </div>
+          )}
+
+          {activeTab === 'privacy' && (
+          <div className="space-y-8 flex-1 animate-fade-in">
+              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-white/10">
+                  <h3 className="font-display-sm text-xl font-bold mb-4">Granted Permissions</h3>
+                  <ul className="space-y-3 font-body-md text-on-surface-variant">
+                      <li className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-primary"/> Local File System Access</li>
+                      <li className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-primary"/> Desktop Command Execution</li>
+                      <li className="flex items-center gap-3"><CheckCircle2 className="w-5 h-5 text-primary"/> Window Management</li>
+                  </ul>
+              </div>
+              <div className="p-6 rounded-2xl bg-surface-container-lowest border border-white/10">
+                  <h3 className="font-display-sm text-xl font-bold mb-4">Stored Memories</h3>
+                  <p className="font-body-md text-on-surface-variant mb-4">Luna saves conversation histories locally on your hardware. No chat data is ever sent to the cloud.</p>
+                  <div className="p-4 rounded-xl bg-primary/10 text-primary font-mono text-sm border border-primary/20 flex items-center justify-between">
+                      <span>Chat History Database</span>
+                      <span className="px-3 py-1 bg-primary/20 rounded-full text-xs">Active</span>
+                  </div>
+              </div>
+              <div className="p-6 rounded-2xl bg-error/10 border border-error/20">
+                  <h3 className="font-display-sm text-xl font-bold text-error mb-4">Danger Zone</h3>
+                  <p className="font-body-md text-on-surface-variant mb-6">Wiping your memory will permanently delete all conversation history, settings, and personalizations. Luna will reset to factory defaults.</p>
+                  <button onClick={handleWipeData} className="px-6 py-3 rounded-xl bg-error text-white font-bold hover:bg-error/80 transition-all flex items-center gap-2 active:scale-95 shadow-[0_0_15px_rgba(255,0,0,0.2)]">
+                      Wipe All Memory
+                  </button>
+              </div>
+          </div>
+          )}
 
           {/* Footer Actions */}
           <footer className="pt-10 flex items-center justify-center border-t border-white/5 mt-8">
