@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Onboarding from './components/Onboarding';
 import Configuration from './components/Configuration';
 import Sidebar from './components/Sidebar';
@@ -11,7 +11,8 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('hasOnboarded'))
   const [showConfig, setShowConfig] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState({ downloading: false, percent: 0, status: '' })
-    const [attachedFile, setAttachedFile] = useState(null);
+  const [attachedFile, setAttachedFile] = useState(null);
+  const abortControllerRef = useRef(null);
   
   // Multi-Session Chat State
   const [chats, setChats] = useState([])
@@ -56,7 +57,7 @@ function App() {
     const newChat = {
       id: newId,
       title: "New Conversation",
-      messages: [{ role: 'ai', content: 'Starting a new conversation! What is on your mind?' }]
+      messages: [{ role: 'ai', content: 'Greetings! I am Luna, your offline AI companion. I can run models locally, summarize attachments, and automate your computer. Select a quick action card below to try one of my desktop commands:' }]
     };
     // Add to the top of the list
     setChats(prev => [newChat, ...prev]);
@@ -168,6 +169,14 @@ function App() {
     }
   };
 
+  const handleStopGenerating = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  };
+
   // --- OLLAMA AI INTEGRATION ---
   const handleSend = async (forcedInput = null, imageObj = null, isResume = false) => {
     // If we passed a string directly, use it. Otherwise use the state.
@@ -198,6 +207,8 @@ function App() {
     
     if (!isResume) setIsLoading(true);
 
+    abortControllerRef.current = new AbortController();
+
     // Helper function to safely update the active chat's messages
     const updateActiveChat = (updaterFn) => {
       setChats(prevChats => prevChats.map(chat => {
@@ -217,8 +228,18 @@ function App() {
     };
 
     if (!isResume) {
+      // Create a base64 data URL if it is an image to bypass Electron local file security
+      const displayUrl = (fileToUse && fileToUse.type === 'image') 
+        ? `data:image/${fileToUse.name.split('.').pop()};base64,${fileToUse.data}` 
+        : null;
+
       // 1. Add user message to UI
-      updateActiveChat(prevMsgs => [...prevMsgs, { role: 'user', content: rawUserMessage, imageUrl: fileToUse?.url, fileName: fileToUse?.type === 'pdf' ? fileToUse.name : null }]);
+      updateActiveChat(prevMsgs => [...prevMsgs, { 
+        role: 'user', 
+        content: rawUserMessage, 
+        imageUrl: displayUrl, 
+        fileName: fileToUse?.type === 'pdf' ? fileToUse.name : null 
+      }]);
 
       // 2. Add a blank AI message placeholder with isThinking flag
       updateActiveChat(prevMsgs => [...prevMsgs, { role: 'ai', content: '', isThinking: true }]);
@@ -268,6 +289,41 @@ function App() {
         automationResult = "Please use the format: 'create note filename.txt your message here'";
       }
     }
+    else if (lowerMsg.startsWith('rename note ')) {
+      const match = rawUserMessage.match(/rename note (.+?) to (.+)/i);
+      if (match) {
+        const oldName = match[1].trim();
+        const newName = match[2].trim();
+        automationResult = await window.api.renameNote(oldName, newName);
+      } else {
+        automationResult = "Please use the format: 'rename note [oldname.txt] to [newname.txt]'";
+      }
+    }
+    else if (lowerMsg.startsWith('draft email to ')) {
+      const match = rawUserMessage.match(/draft email to (.+?) subject (.+?) body (.+)/i);
+      if (match) {
+        const email = match[1].trim();
+        const subject = match[2].trim();
+        const body = match[3].trim();
+        automationResult = await window.api.draftEmail(email, subject, body);
+      } else {
+        automationResult = "Please use the format: 'draft email to [email] subject [subject] body [body]'";
+      }
+    }
+    else if (lowerMsg.startsWith('add todo ')) {
+      const task = rawUserMessage.substring(9).trim();
+      automationResult = await window.api.addTodo(task);
+    }
+    else if (lowerMsg.startsWith('create calendar event ')) {
+      const match = rawUserMessage.match(/create calendar event (.+?) on (.+)/i);
+      if (match) {
+        const title = match[1].trim();
+        const dateStr = match[2].trim();
+        automationResult = await window.api.createCalendarEvent(title, dateStr);
+      } else {
+        automationResult = "Please use the format: 'create calendar event [Event Name] on [YYYY-MM-DD]'";
+      }
+    }
 
     // If an automation was triggered, show the result and STOP (don't send to Ollama)
     if (automationResult) {
@@ -299,8 +355,8 @@ function App() {
     // Determine actual Ollama model name based on UI setting
     let ollamaModel = 'phi3';
     if (finalImageObj) ollamaModel = 'llava';
-    else if (selectedModelSetting === 'pro') ollamaModel = 'llama3';
-    else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2';
+    else if (selectedModelSetting === 'pro') ollamaModel = 'llama3.2';
+    else if (selectedModelSetting === 'flash') ollamaModel = 'gemma2:2b';
 
     try {
       // 2. Build the System Prompt
@@ -333,12 +389,13 @@ function App() {
           stream: true,
           keep_alive: "20m",
           options: {
-            num_ctx: 1024, 
-            num_thread: 8,  
-            num_predict: 256,
-            temperature: 0.5
+            num_ctx: 2048,      // Increased from 512 to ensure PDF text fits in memory
+            num_predict: 1024,  // Increased from 128 to prevent cutting off mid-sentence
+            temperature: 0.4,   // Keeps generation fast and deterministic
+            use_mlock: true     // Locks weights in RAM for maximum speed
           }
-        })
+        }),
+        signal: abortControllerRef.current.signal
       });
       if (!response.ok) {
         const errorText = await response.text();
@@ -380,7 +437,21 @@ function App() {
       }
       
       setIsLoading(false);
+      abortControllerRef.current = null;
     } catch (error) {
+      if (error.name === 'AbortError') {
+         updateActiveChat(prevMsgs => {
+           const newMsgs = [...prevMsgs];
+           const lastMessage = {...newMsgs[newMsgs.length - 1]};
+           lastMessage.isThinking = false;
+           newMsgs[newMsgs.length - 1] = lastMessage;
+           return newMsgs;
+         });
+         setIsLoading(false);
+         abortControllerRef.current = null;
+         return;
+      }
+
       if (error.message.includes('not found') && !isResume) {
          // Auto-download the missing model!
          pullModel(ollamaModel, finalUserMessage, finalImageObj);
@@ -459,6 +530,7 @@ function App() {
           isLoading={isLoading}
           messages={messages}
           runOllamaInstaller={runOllamaInstaller}
+          onTemplateClick={setInput}
         />
 
         <InputArea 
@@ -471,6 +543,7 @@ function App() {
           handleSend={handleSend} // Send handles reading state automatically!
           attachedFile={attachedFile}
           setAttachedFile={setAttachedFile}
+          handleStopGenerating={handleStopGenerating}
         />
       </main>
     </div>

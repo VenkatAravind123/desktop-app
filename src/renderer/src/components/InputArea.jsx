@@ -10,7 +10,8 @@ export default function InputArea({
   handleFileUpload,
   handleSend,
   attachedFile,
-  setAttachedFile
+  setAttachedFile,
+  handleStopGenerating
 }) {
   return (
     <footer className="p-[40px] relative z-40 bg-gradient-to-t from-background to-transparent">
@@ -69,13 +70,22 @@ export default function InputArea({
           
           <div className="flex items-center gap-2 pr-2">
             
-            <button 
-              onClick={() => handleSend()} // Clean call (reads attachedFile state automatically)
-              disabled={isLoading}
-              className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center send-btn-glow active:scale-90 disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_upward</span>
-            </button>
+            {isLoading ? (
+              <button 
+                onClick={handleStopGenerating}
+                className="w-12 h-12 rounded-full bg-error text-white flex items-center justify-center active:scale-90 shadow-[0_0_15px_rgba(255,0,0,0.3)] hover:bg-error/90 transition-colors"
+              >
+                <span className="material-symbols-outlined font-bold text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>stop</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSend()}
+                disabled={!input.trim() && !attachedFile}
+                className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center send-btn-glow active:scale-90 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_upward</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

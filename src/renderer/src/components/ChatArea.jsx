@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function ChatArea({ activeChat, isLoading, messages, runOllamaInstaller }) {
+export default function ChatArea({ activeChat, isLoading, messages, runOllamaInstaller, onTemplateClick }) {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -84,12 +84,61 @@ export default function ChatArea({ activeChat, isLoading, messages, runOllamaIns
                       <span className="font-label-md italic opacity-80">Luna is thinking...</span>
                     </div>
                   ) : (
-                    <p className="font-body-md leading-relaxed text-on-surface/90 whitespace-pre-wrap">
-                      {msg.content}
-                      {/* Show a blinking cursor while streaming */}
-                      {isLoading && index === messages.length - 1 && <span className="loader">█</span>}
-                    </p>
-                  )}
+                      <>
+                        <p className="font-body-md leading-relaxed text-on-surface/90 whitespace-pre-wrap">
+                          {msg.content}
+                          {/* Show a blinking cursor while streaming */}
+                          {isLoading && index === messages.length - 1 && <span className="loader">█</span>}
+                        </p>
+                        
+                        {index === 0 && onTemplateClick && (
+                          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+                            <button 
+                              onClick={() => onTemplateClick("organize my downloads")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">📂 Clean & Organize Downloads</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Tidy up your Downloads folder into sorted directories.</p>
+                            </button>
+                            <button 
+                              onClick={() => onTemplateClick("create note demo.txt Hello Judges!")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">📝 Write Desktop Note</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Create a text note on your Windows desktop instantly.</p>
+                            </button>
+                            <button 
+                              onClick={() => onTemplateClick("open notepad")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">🛡️ Launch App (Confirmation)</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Launch Notepad with secure user permission gates.</p>
+                            </button>
+                            <button 
+                              onClick={() => onTemplateClick("draft email to test@example.com subject Hello body World")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">📧 Draft OS Email</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Prepare a pre-filled draft in your native mail client.</p>
+                            </button>
+                            <button 
+                              onClick={() => onTemplateClick("create calendar event Meeting on 2026-07-08")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">📅 Schedule Calendar Event</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Generate and open a calendar event import dialog.</p>
+                            </button>
+                            <button 
+                              onClick={() => onTemplateClick("remind me to record demo in 0 minutes")} 
+                              className="p-4 rounded-xl border border-white/5 bg-white/5 hover:border-primary/30 hover:bg-primary/5 text-left transition-all active:scale-[0.98] group"
+                            >
+                              <p className="font-bold text-xs text-primary mb-1 group-hover:text-primary-container">⏰ Test Desktop Reminder</p>
+                              <p className="text-[11px] text-on-surface-variant/70 leading-relaxed">Launch a native Windows desktop timer notification.</p>
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
                 </div>
               </div>
             );

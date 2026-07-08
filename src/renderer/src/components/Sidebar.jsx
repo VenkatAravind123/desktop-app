@@ -71,8 +71,8 @@ export default function Sidebar({
           <span>
             {(() => {
               const model = localStorage.getItem('luna-model') || 'core';
-              if (model === 'pro') return 'Luna Pro (llama3)';
-              if (model === 'flash') return 'Luna Flash (gemma2)';
+              if (model === 'pro') return 'Luna Pro (llama3.2)';
+              if (model === 'flash') return 'Luna Flash (gemma2:2b)';
               return 'Luna Core (phi3)';
             })()}
           </span>

@@ -15,7 +15,11 @@ const api = {
   launchApp: (appName) => ipcRenderer.invoke('launch-app', appName),
   createReminder: (task, ms) => ipcRenderer.invoke('create-reminder', task, ms),
   findFile: (fileName) => ipcRenderer.invoke('find-file', fileName),
-  organizeDownloads: () => ipcRenderer.invoke('organize-downloads')
+  organizeDownloads: () => ipcRenderer.invoke('organize-downloads'),
+  draftEmail: (email, subject, body) => ipcRenderer.invoke('draft-email', email, subject, body),
+  renameNote: (oldName, newName) => ipcRenderer.invoke('rename-note', oldName, newName),
+  addTodo: (task) => ipcRenderer.invoke('add-todo', task),
+  createCalendarEvent: (title, dateStr) => ipcRenderer.invoke('create-calendar-event', title, dateStr)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

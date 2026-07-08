@@ -142,6 +142,15 @@ export default function Onboarding({ onComplete }) {
             <h2 className="font-display-sm text-3xl font-bold mb-2">Establish Identity & System</h2>
             <p className="text-on-surface-variant mb-6 text-sm">Configure how you and your assistant interact within the cosmos.</p>
             
+            {/* Ollama Requirement Notice */}
+            <div className="w-full p-4 rounded-xl bg-primary/10 border border-primary/20 text-on-surface flex items-start gap-3 mb-6 text-left">
+              <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">info</span>
+              <div className="text-xs space-y-1">
+                <p className="font-bold text-primary">Local AI Engine Requirement</p>
+                <p className="text-on-surface-variant/80">Luna operates 100% offline on your hardware. This requires the local **Ollama AI Engine** to be running on your system. If you do not have it installed yet, don't worry—Luna will offer a 1-click auto-installer as soon as you enter the app!</p>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full text-left">
               
               {/* Column 1: Identity */}

@@ -229,7 +229,7 @@ export default function Configuration({ onBack }) {
                     {model === 'pro' && <div className="w-2 h-2 rounded-full bg-tertiary" />}
                   </div>
                   <div>
-                    <p className="font-label-md text-sm text-on-surface">Luna Pro <span className="text-tertiary ml-2">(Advanced Reasoning)</span>  (Model used <b>llama3</b>)</p>
+                    <p className="font-label-md text-sm text-on-surface">Luna Pro <span className="text-tertiary ml-2">(Advanced Reasoning)</span>  (Model used <b>llama3.2</b>)</p>
                     <p className="text-xs text-on-surface-variant/70 mt-1">High-capacity compute for complex analytical tasks.</p>
                   </div>
                 </label>
@@ -239,7 +239,7 @@ export default function Configuration({ onBack }) {
                     {model === 'flash' && <div className="w-2 h-2 rounded-full bg-secondary-container" />}
                   </div>
                   <div>
-                    <p className="font-label-md text-sm text-on-surface">Luna Flash <span className="text-secondary-container ml-2">(High Speed)</span>  (Model used <b>gemma3</b>)</p>
+                    <p className="font-label-md text-sm text-on-surface">Luna Flash <span className="text-secondary-container ml-2">(High Speed)</span>  (Model used <b>gemma2:2b</b>)</p>
                     <p className="text-xs text-on-surface-variant/70 mt-1">Low-latency responses for rapid-fire interactions.</p>
                   </div>
                 </label>
